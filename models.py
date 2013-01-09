@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 
-# Copyright 2012 Artyom Maslovsky
+#  Copyright 2012 Artyom Maslovsky
 
 #  This file is part of RemoteSQL-GAE.
 #
@@ -20,6 +20,13 @@
 from google.appengine.ext import db
 
 class People(db.Model):
+    """
+    'People' table, fields:
+        - varchar name
+        - varchar email
+        - int grade
+        - text info
+    """
 	name = db.StringProperty(default="")
 	email = db.StringProperty(required=True)
 	grade = db.IntegerProperty(default=0)

@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 
-# Copyright 2012 Artyom Maslovsky
+#  Copyright 2012 Artyom Maslovsky
 
 #  This file is part of RemoteSQL-GAE.
 #
@@ -17,44 +17,79 @@
 #  You should have received a copy of the GNU General Public License
 #  along with RemoteSQL-GAE.  If not, see <http://www.gnu.org/licenses/>.
 
+__doc__ = """
+This module contains the RemoteSQL server class that handles any request
+to this application.
+"""
+
 import webapp2
 import json
 import cgi
 
 import models
 
+
 def auth(method):
+    """
+    Decorator for methods that require authorization
+    """
+
+    # Autorization token - when persists in a request's Cookie header,
+    # it considered valid.
 	AUTH_TOKEN = 'caf0ab246d8649580665683653f6825a'
 
 	def wrapper(self, *pargs, **kwargs):
+
+        # If 'auth' cookie exists, compare it's value with the authorization
+        # token.
 		if 'auth' in self.request.cookies:
 			if self.request.cookies['auth'] == AUTH_TOKEN:
+
+                # When they coinced call method
 				return method(self, *pargs, **kwargs)
+
 			else:
+                # Otherwise show '401 Unathorized'
 				self.error(401)
+
 		else:
+            # Otherwise show '401 Unauthorized'
 			self.error(401)
 
 	return wrapper
 
 
 
+# Represents 'HTTP 400 Bad Request' error
 class Error400: pass
 
 def catch_errors(method):
+    """
+    Decorator for catching any error in method
+    """
 
 	def wrapper(self, *pargs, **kwargs):
+
 		try:
+            # Expect any error here
 			return method(self, *pargs, **kwargs)
+
 		except:
+            # When exception appears, show '400 Bad Request'
 			self.error(400)
 
 	return wrapper
 
 def common_headers(method):
+    """
+    Decorator for adding some common headers to method's response
+    """
 
 	def wrapper(self, *pargs, **kwargs):
+
+        # NOTE: 'Connection' header is deprecated for GAE applications
 		self.response.headers['Connection'] = 'close'
+
 		self.response.headers['Content-Type'] = 'application/json'
 
 		return method(self, *pargs, **kwargs)
@@ -63,6 +98,14 @@ def common_headers(method):
 
 
 class RemoteSQLServer(webapp2.RequestHandler):
+    """
+    This class represents remote SQL server logic.
+    Emulated SQL phrases (and corresponding methods):
+        - get() -- SELECT ... FROM ...
+        - post() -- INSERT INTO ...
+        - put() -- UPDATE ...
+        - delete() -- DELETE FROM ...
+    """
 
 	@auth
 	@catch_errors
@@ -72,16 +115,25 @@ class RemoteSQLServer(webapp2.RequestHandler):
 		SELECT ... FROM ...
 		"""
 
+        # Get filteres objects list
 		objects = self.get_filtered_objects()
 
+        # Compose result list
 		result = []
 		for obj in objects.fetch(objects.count()):
+
+            # Represent each object as dictionary
 			obj_dir = {}
+
+            # Include all object's keys into response
 			for key in obj._fields:
 				if not key.startswith('_'):
 					obj_dir[key] = obj.__getattribute__(key)
+
+            # Put object into result list
 			result.append(obj_dir)
 
+        # Put the result list to the response as JSON byte string
 		self.response.out.write(json.dumps(result))
 
 	@auth
@@ -92,13 +144,17 @@ class RemoteSQLServer(webapp2.RequestHandler):
 		INSERT ... INTO ...
 		"""
 
+        # Get sent data
 		data = self.parse_body()
 
+        # Get request table object
 		self.get_request_table()
 
 		try:
+            # Trying to create new record in table
 			self.table(**data).put()
 		except:
+            # If any error appears - Bad Request
 			raise Error400
 
 	@auth
@@ -109,10 +165,13 @@ class RemoteSQLServer(webapp2.RequestHandler):
 		UPDATE ...
 		"""
 
+        # Get sent data
 		data = self.parse_body()
 
+        # Get filteres objects list
 		objects = self.get_filtered_objects()
 
+        # For each object change required attributes
 		for obj in objects.fetch(objects.count()):
 			for key, val in data.items():
 				if key in obj._fields:
@@ -129,17 +188,25 @@ class RemoteSQLServer(webapp2.RequestHandler):
 		DELETE FROM ...
 		"""
 
+        # Get filteres objects list
 		objects = self.get_filtered_objects()
 
+        # Delete every object
 		for obj in objects.fetch(objects.count()):
 			obj.delete()
 
 	@catch_errors
 	def parse_body(self):
+        """
+        Convert request body as JSON bytes string to Python object
+        """
 		return json.loads(self.request.body)
 
 	@catch_errors
 	def get_request_table(self):
+        """
+        Search for requested table
+        """
 		table = None
 
 		try:
@@ -152,6 +219,9 @@ class RemoteSQLServer(webapp2.RequestHandler):
 
 	@catch_errors
 	def parse_request_filters(self):
+        """
+        Convert filters url parameter to Python object
+        """
 		s_filters = self.request.get('filters')
 
 		if not s_filters:
@@ -165,6 +235,9 @@ class RemoteSQLServer(webapp2.RequestHandler):
 
 	@catch_errors
 	def get_filtered_objects(self):
+        """
+        Create a list of filteres objects from request table
+        """
 		self.get_request_table()
 		table = self.table
 
@@ -178,6 +251,7 @@ class RemoteSQLServer(webapp2.RequestHandler):
 		else:
 			query = []
 
+        # Parsing filters and creating GQL query
 		query_params = []
 		try:
 			for filter_ in filters:
@@ -202,14 +276,20 @@ class RemoteSQLServer(webapp2.RequestHandler):
 		except:
 			raise Error400
 
+        # Applying GQL to the table
 		if filters:
 			return table.gql(query, *query_params)
 		else:
 			return table.all()
 
 
+
+# Application URL configuration
 urlconf = {
+
 	'/.*': RemoteSQLServer,
+
 }
 
-app = webapp2.WSGIApplication(urlconf.items(), debug=True)
+# Main application object
+app = webapp2.WSGIApplication(urlconf.items(), debug=False)
