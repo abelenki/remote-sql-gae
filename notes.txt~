@@ -1,0 +1,42 @@
+Передача фильтров в GET:
+
+?filters=age,>,20:AND:name,=,""
+
+
+
+GET /people?filters=name,=,John HTTP/1.1
+Host: remote-sql.appspot.com
+Cookie: auth=caf0ab
+
+
+
+GET /people HTTP/1.1
+Host: remote-sql.appspot.com
+Cookie: auth=caf0ab
+
+
+
+POST /people HTTP/1.1
+Host: remote-sql.appspot.com
+Cookie: auth=caf0ab
+Content-Length: 44
+
+{"name": "John", "email": "john@mymail.com"}
+
+
+
+DELETE /people HTTP/1.1
+Host: remote-sql.appspot.com
+Cookie: auth=caf0ab
+
+
+
+PUT /people?filters=name,=,John HTTP/1.1
+Host: remote-sql.appspot.com
+Cookie: auth=caf0ab
+Content-Length: 24
+
+{"info": "YOUR AD HERE"}
+
+
+
