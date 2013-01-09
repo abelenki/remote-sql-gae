@@ -27,9 +27,9 @@ class People(db.Model):
         - int grade
         - text info
     """
-	name = db.StringProperty(default="")
-	email = db.StringProperty(required=True)
-	grade = db.IntegerProperty(default=0)
-	info = db.TextProperty(default="")
+    name = db.StringProperty(default="")
+    email = db.StringProperty(required=True)
+    grade = db.IntegerProperty(default=0)
+    info = db.TextProperty(default="")
 
-	_fields = ['name', 'email', 'grade', 'info']
+    _fields = ['name', 'email', 'grade', 'info']
